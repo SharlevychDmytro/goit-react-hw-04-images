@@ -1,4 +1,4 @@
-import { Component } from 'react';
+import { useState, useEffect } from 'react';
 import { Searchbar } from 'components/Searchbar/Searchbar';
 import { AppStyled } from 'components/App/App.styled';
 import { ImageGallery } from 'components/ImageGallery/ImageGallery';
@@ -7,36 +7,34 @@ import { Button } from 'components/Button/Button';
 import { Loader } from 'components/Loader/Loader';
 import { Modal } from 'components/Modal/Modal';
 
-export class App extends Component {
-  state = {
-    page: 1,
-    query: '',
-    images: [],
-    isLoading: false,
-    currentItem: '',
-    isOpen: false,
-    loadMore: false,
-  };
+export const App = () => {
+  const [page, setPage] = useState(1);
+  const [query, setQuery] = useState('');
+  const [images, setImages] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [currentItem, setCurrentItem] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
+  const [loadMore, setLoadMore] = useState(false);
 
-  async componentDidUpdate(_, prevState) {
-    const { page, query } = this.state;
+  useEffect(() => {
     if (query.trim() === '') {
       return;
     }
-    if (prevState.page !== page || prevState.query !== query) {
-      this.setState({ isLoading: true });
+    async function getImages() {
+      const perPage = 12;
+      setIsLoading(true);
       const response = await requestToServer(query, page);
-      this.setState({ isLoading: false });
+      setIsLoading(false);
       const data = response.data.hits;
 
       if (data.length) {
-        this.setState({ loadMore: true });
+        setLoadMore(true);
       } else {
-        this.setState({ loadMore: false });
+        setLoadMore(false);
       }
 
-      if (Math.ceil(response.data.totalHits / 12) === Number(page)) {
-        this.setState({ loadMore: false });
+      if (Math.ceil(response.data.totalHits / perPage) === Number(page)) {
+        setLoadMore(false);
       }
 
       if (!data.length) {
@@ -44,40 +42,40 @@ export class App extends Component {
           'Sorry, there are no images matching your search query. Please try again.'
         );
       }
-      this.setState(({ images }) => ({ images: [...images, ...data] }));
+      setImages(state => [...state, ...data]);
     }
-  }
+    getImages();
+  }, [page, query]);
 
-  loadMore = () => {
-    this.setState(prevState => ({ page: prevState.page + 1 }));
+  const onLoadMore = () => {
+    setPage(page + 1);
   };
 
-  formSubmit = query => {
-    this.setState({ page: 1, query: query, images: [] });
+  const formSubmit = query => {
+    setPage(1);
+    setImages([]);
+    setQuery(query);
   };
 
-  clickItem = e => {
-    this.setState({ isOpen: true, currentItem: e.currentTarget.id });
+  const clickItem = e => {
+    setIsOpen(true);
+    setCurrentItem(e.currentTarget.id);
   };
 
-  closeModal = () => {
-    this.setState({ isOpen: false, currentItem: '' });
+  const closeModal = () => {
+    setIsOpen(false);
+    setCurrentItem('');
   };
 
-  render() {
-    const { isLoading, images, isOpen, loadMore } = this.state;
-    const currentImage = images.filter(
-      image => String(image.id) === this.state.currentItem
-    );
+  const currentImage = images.filter(image => String(image.id) === currentItem);
 
-    return (
-      <AppStyled>
-        <Searchbar onSubmit={this.formSubmit} />
-        <ImageGallery images={images} onClick={this.clickItem} />
-        {isLoading && <Loader />}
-        {loadMore && <Button onClick={this.loadMore} />}
-        {isOpen && <Modal onClose={this.closeModal} data={currentImage} />}
-      </AppStyled>
-    );
-  }
-}
+  return (
+    <AppStyled>
+      <Searchbar onSubmit={formSubmit} />
+      <ImageGallery images={images} onClick={clickItem} />
+      {isLoading && <Loader />}
+      {loadMore && <Button onClick={onLoadMore} />}
+      {isOpen && <Modal onClose={closeModal} data={currentImage} />}
+    </AppStyled>
+  );
+};
