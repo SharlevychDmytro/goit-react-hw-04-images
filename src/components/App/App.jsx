@@ -18,6 +18,7 @@ export const App = () => {
 
   useEffect(() => {
     if (query.trim() === '') {
+      setLoadMore(false);
       return;
     }
     async function getImages() {
